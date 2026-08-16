@@ -2,17 +2,10 @@ import os
 
 from dotenv import load_dotenv
 from openai import OpenAI
-from langgraph.prebuilt import ToolNode
-
 from agentforge.agent.state import AgentState
+from agentforge.agent.tools import TOOLS
 
-from agentforge.tools.schemas import (
-    CALCULATOR_TOOL,
-    DATABASE_TOOL,
-    TIME_TOOL,
-    WEATHER_TOOL,
-    WEB_SEARCH_TOOL,
-)
+
 
 
 # ---------------------------------------------------------
@@ -39,57 +32,15 @@ client = OpenAI(
 )
 
 
-# ---------------------------------------------------------
-# Tools
-# ---------------------------------------------------------
-# For now, these are OpenAI-compatible tool schemas.
-# We are NOT converting the Python functions into
-# LangGraph tools yet.
-# ---------------------------------------------------------
-
-TOOLS = [
-    CALCULATOR_TOOL,
-    TIME_TOOL,
-    WEB_SEARCH_TOOL,
-    WEATHER_TOOL,
-    DATABASE_TOOL,
-]
-
-
-# ---------------------------------------------------------
-# Agent Node
-# ---------------------------------------------------------
 
 def agent_node(state: AgentState):
-    """
-    Agent node:
-    Sends the current conversation state to the LLM
-    and returns the LLM response.
-    """
 
     response = client.chat.completions.create(
         model=MODEL,
         messages=state["messages"],
-        tools=TOOLS,
+        tools=[tool.metadata for tool in TOOLS],
     )
 
     return {
-        "messages": [
-            response.choices[0].message
-        ]
+        "messages": [response.choices[0].message]
     }
-
-
-# ---------------------------------------------------------
-# Tool Node
-# ---------------------------------------------------------
-#
-# LangGraph's ToolNode expects LangChain-compatible tools.
-#
-# Our existing tools are currently ordinary Python
-# functions, so we intentionally leave this empty today.
-#
-# We will integrate the five tools properly later.
-# ---------------------------------------------------------
-
-tool_node = ToolNode([])
