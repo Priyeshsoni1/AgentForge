@@ -52,3 +52,57 @@ TIME_TOOL = {
         }
     }
 }
+
+WEB_SEARCH_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "web_search",
+        "description": "Search the web for information.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "query": {
+                    "type": "string",
+                    "description": "The search query."
+                }
+            },
+            "required": ["query"]
+        }
+    }
+}
+
+WEATHER_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_weather",
+        "description": "Get current weather information for a city.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "city": {
+                    "type": "string",
+                    "description": "Name of the city."
+                }
+            },
+            "required": ["city"]
+        }
+    }
+}
+
+DATABASE_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "database_lookup",
+        "description": "Look up user information using a user ID.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "user_id": {
+                    "type": "string",
+                    "description": "The user's ID."
+                }
+            },
+            "required": ["user_id"]
+        }
+    }
+}

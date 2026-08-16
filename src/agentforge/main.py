@@ -6,7 +6,10 @@ from openai import OpenAI
 
 from agentforge.tools.calculator import calculate
 from agentforge.tools.get_time import get_time
-from agentforge.tools.schemas import CALCULATOR_TOOL, TIME_TOOL
+from agentforge.tools.web_search import web_search
+from agentforge.tools.weather import get_weather
+from agentforge.tools.database_lookup import database_lookup
+from agentforge.tools.schemas import CALCULATOR_TOOL, DATABASE_TOOL, TIME_TOOL, WEATHER_TOOL, WEB_SEARCH_TOOL
 
 load_dotenv()
 
@@ -22,7 +25,15 @@ def execute_tool(tool_name: str, arguments: dict):
         return calculate(**arguments)
     if tool_name == "get_time":
         return get_time(**arguments)
+    if tool_name == "web_search":
+        return web_search(**arguments)
 
+    if tool_name == "get_weather":
+        return get_weather(**arguments)
+
+    if tool_name == "database_lookup":
+        return database_lookup(**arguments)
+    
     raise ValueError(f"Unknown tool: {tool_name}")
 
 
@@ -38,7 +49,13 @@ def main():
     response = client.chat.completions.create(
         model="poolside/laguna-xs-2.1:free",
         messages=messages,
-        tools=[CALCULATOR_TOOL,TIME_TOOL],
+        TOOLS = [
+            CALCULATOR_TOOL,
+            TIME_TOOL,
+            WEB_SEARCH_TOOL,
+            WEATHER_TOOL,
+            DATABASE_TOOL,
+        ]
     )
 
     message = response.choices[0].message
@@ -65,7 +82,13 @@ def main():
         final_response = client.chat.completions.create(
             model="poolside/laguna-xs-2.1:free",
             messages=messages,
-            tools=[CALCULATOR_TOOL,TIME_TOOL],
+            TOOLS = [
+                CALCULATOR_TOOL,
+                TIME_TOOL,
+                WEB_SEARCH_TOOL,
+                WEATHER_TOOL,
+                DATABASE_TOOL,
+            ]
         )
 
         print(final_response.choices[0].message.content)
