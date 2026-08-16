@@ -5,11 +5,14 @@ import time
 from dotenv import load_dotenv
 from openai import OpenAI
 
+from agentforge.core.tool_executor import execute_tool_safely
+
 from agentforge.tools.calculator import calculate
 from agentforge.tools.get_time import get_time
 from agentforge.tools.web_search import web_search
 from agentforge.tools.weather import get_weather
 from agentforge.tools.database_lookup import database_lookup
+from agentforge.tools.search_fallback import search_fallback
 
 from agentforge.tools.schemas import (
     CALCULATOR_TOOL,
@@ -24,7 +27,11 @@ from agentforge.tools.schemas import (
 # Configuration
 # ---------------------------------------------------------
 
+MODEL = "poolside/laguna-xs-2.1:free"
+
 MAX_ITERATIONS = 5
+
+MAX_TOOL_RETRIES = 2
 
 
 # ---------------------------------------------------------
@@ -35,13 +42,26 @@ load_dotenv()
 
 
 # ---------------------------------------------------------
-# OpenRouter client
+# OpenRouter Client
 # ---------------------------------------------------------
 
 client = OpenAI(
     api_key=os.getenv("OPENROUTER_API_KEY"),
     base_url="https://openrouter.ai/api/v1",
 )
+
+
+# ---------------------------------------------------------
+# Tools
+# ---------------------------------------------------------
+
+TOOLS = [
+    CALCULATOR_TOOL,
+    TIME_TOOL,
+    WEB_SEARCH_TOOL,
+    WEATHER_TOOL,
+    DATABASE_TOOL,
+]
 
 
 # ---------------------------------------------------------
@@ -83,33 +103,30 @@ def main():
         }
     ]
 
-    tools = [
-        CALCULATOR_TOOL,
-        TIME_TOOL,
-        WEB_SEARCH_TOOL,
-        WEATHER_TOOL,
-        DATABASE_TOOL,
-    ]
-
     # -----------------------------------------------------
     # Agent Loop
     # -----------------------------------------------------
 
     for iteration in range(MAX_ITERATIONS):
 
-        print(f"\n--- Agent Iteration {iteration + 1}/{MAX_ITERATIONS} ---")
+        print(
+            f"\n--- Agent Iteration {iteration + 1} ---"
+        )
 
-        # Ask the LLM
+        # -------------------------------------------------
+        # Ask LLM
+        # -------------------------------------------------
+
         response = client.chat.completions.create(
-            model="poolside/laguna-xs-2.1:free",
+            model=MODEL,
             messages=messages,
-            tools=tools,
+            tools=TOOLS,
         )
 
         message = response.choices[0].message
 
         # -------------------------------------------------
-        # No tool call = final answer
+        # Final Answer
         # -------------------------------------------------
 
         if not message.tool_calls:
@@ -117,32 +134,16 @@ def main():
             print("\nFinal Answer:")
             print(message.content)
 
-            return
+            break
 
         # -------------------------------------------------
-        # Add assistant tool-call message
+        # Add assistant message containing tool calls
         # -------------------------------------------------
 
-        messages.append(
-            {
-                "role": "assistant",
-                "content": message.content,
-                "tool_calls": [
-                    {
-                        "id": tool_call.id,
-                        "type": "function",
-                        "function": {
-                            "name": tool_call.function.name,
-                            "arguments": tool_call.function.arguments,
-                        },
-                    }
-                    for tool_call in message.tool_calls
-                ],
-            }
-        )
+        messages.append(message)
 
         # -------------------------------------------------
-        # Execute ALL tool calls
+        # Execute ALL requested tools
         # -------------------------------------------------
 
         for tool_call in message.tool_calls:
@@ -153,40 +154,108 @@ def main():
                 tool_call.function.arguments
             )
 
-            print("\nTool selected:", tool_name)
-            print("Arguments:", arguments)
+            print(
+                "\nTool selected:",
+                tool_name
+            )
 
-            try:
-                result = execute_tool(
-                    tool_name,
-                    arguments
-                )
-
-                print("Tool result:", result)
-
-            except Exception as e:
-
-                result = f"Tool execution failed: {str(e)}"
-
-                print("Tool error:", result)
+            print(
+                "Arguments:",
+                arguments
+            )
 
             # -------------------------------------------------
-            # Send tool result back to the LLM
+            # Retry tool execution
+            # -------------------------------------------------
+
+            attempt = 0
+
+            while attempt < MAX_TOOL_RETRIES:
+
+                result = execute_tool_safely(
+                    tool_name,
+                    arguments,
+                    execute_tool,
+                )
+
+                # ---------------------------------------------
+                # Tool succeeded
+                # ---------------------------------------------
+
+                if result["success"]:
+
+                    tool_result = result["result"]
+
+                    print(
+                        "Tool result:",
+                        tool_result
+                    )
+
+                    break
+
+                # ---------------------------------------------
+                # Tool failed
+                # ---------------------------------------------
+
+                attempt += 1
+
+                print(
+                    f"Tool failed. "
+                    f"Retry {attempt}/{MAX_TOOL_RETRIES}"
+                )
+
+            # -------------------------------------------------
+            # Retries exhausted
+            # -------------------------------------------------
+
+            if not result["success"]:
+
+                print(
+                    "Tool failed after retries:",
+                    result["error"]
+                )
+
+                # -------------------------------------------------
+                # Web Search Fallback
+                # -------------------------------------------------
+
+                if tool_name == "web_search":
+
+                    print(
+                        "Using web search fallback..."
+                    )
+
+                    tool_result = search_fallback(
+                        arguments.get("query", "")
+                    )
+
+                else:
+
+                    tool_result = (
+                        f"Tool failed: {result['error']}"
+                    )
+
+            # -------------------------------------------------
+            # Add tool result to conversation
             # -------------------------------------------------
 
             messages.append(
                 {
                     "role": "tool",
                     "tool_call_id": tool_call.id,
-                    "content": str(result),
+                    "content": str(tool_result),
                 }
             )
 
-    # -----------------------------------------------------
+    # ---------------------------------------------------------
     # Maximum iterations reached
-    # -----------------------------------------------------
+    # ---------------------------------------------------------
 
-    print("\nAgent stopped: maximum iterations reached.")
+    else:
+
+        print(
+            "\nAgent stopped: maximum iterations reached."
+        )
 
 
 # ---------------------------------------------------------
@@ -201,4 +270,6 @@ if __name__ == "__main__":
 
     end = time.time()
 
-    print(f"\nTime: {end - start:.2f} seconds")
+    print(
+        f"\nTime: {end - start:.2f} seconds"
+    )
