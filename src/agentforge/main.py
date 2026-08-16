@@ -5,8 +5,8 @@ from dotenv import load_dotenv
 from openai import OpenAI
 
 from agentforge.tools.calculator import calculate
-from agentforge.tools.schemas import CALCULATOR_TOOL
-
+from agentforge.tools.get_time import get_time
+from agentforge.tools.schemas import CALCULATOR_TOOL, TIME_TOOL
 
 load_dotenv()
 
@@ -20,6 +20,8 @@ client = OpenAI(
 def execute_tool(tool_name: str, arguments: dict):
     if tool_name == "calculate":
         return calculate(**arguments)
+    if tool_name == "get_time":
+        return get_time(**arguments)
 
     raise ValueError(f"Unknown tool: {tool_name}")
 
@@ -36,7 +38,7 @@ def main():
     response = client.chat.completions.create(
         model="poolside/laguna-xs-2.1:free",
         messages=messages,
-        tools=[CALCULATOR_TOOL],
+        tools=[CALCULATOR_TOOL,TIME_TOOL],
     )
 
     message = response.choices[0].message
@@ -52,6 +54,7 @@ def main():
         print("Arguments:", arguments)
 
         result = execute_tool(tool_name, arguments)
+        print(result)
         messages.append(
             {
                 "role": "tool",
@@ -62,7 +65,7 @@ def main():
         final_response = client.chat.completions.create(
             model="poolside/laguna-xs-2.1:free",
             messages=messages,
-            tools=[CALCULATOR_TOOL],
+            tools=[CALCULATOR_TOOL,TIME_TOOL],
         )
 
         print(final_response.choices[0].message.content)

@@ -34,3 +34,21 @@ CALCULATOR_TOOL = {
         },
     },
 }
+
+TIME_TOOL = {
+    "type": "function",
+    "function": {
+        "name": "get_time",
+        "description": "Get the current time for a supported city.",
+        "parameters": {
+            "type": "object",
+            "properties": {
+                "city": {
+                    "type": "string",
+                    "description": "City name, such as Delhi, London, Tokyo, or New York."
+                }
+            },
+            "required": ["city"]
+        }
+    }
+}
