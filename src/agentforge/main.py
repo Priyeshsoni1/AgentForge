@@ -1,6 +1,7 @@
 
 from fastapi import FastAPI
 
+from agentforge.api.llm_routes import router as llm_router
 from agentforge.core.config import settings
 
 app = FastAPI(
@@ -8,6 +9,8 @@ app = FastAPI(
     version=settings.app_version,
     description="A production-oriented multi-tool AI agent.",
 )
+
+app.include_router(llm_router)
 
 
 @app.get("/", tags=["General"])
