@@ -1,6 +1,7 @@
 
 from fastapi import FastAPI
 
+from agentforge.api.agent_routes import router as agent_router
 from agentforge.api.llm_routes import router as llm_router
 from agentforge.core.config import settings
 
@@ -11,6 +12,7 @@ app = FastAPI(
 )
 
 app.include_router(llm_router)
+app.include_router(agent_router)
 
 
 @app.get("/", tags=["General"])

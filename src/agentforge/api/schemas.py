@@ -22,3 +22,23 @@ class ChatResponse(BaseModel):
     answer: str
     model: str
     usage: TokenUsage
+
+class AgentRunRequest(BaseModel):
+    model_config = ConfigDict(str_strip_whitespace=True)
+
+    message: str = Field(
+        min_length=1,
+        max_length=4000,
+        description="The task for the AgentForge agent.",
+    )
+
+
+class ToolCallInfo(BaseModel):
+    name: str
+    arguments: dict
+
+
+class AgentRunResponse(BaseModel):
+    answer: str
+    tool_calls: list[ToolCallInfo]
+    steps: int

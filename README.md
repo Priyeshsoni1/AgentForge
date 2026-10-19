@@ -42,3 +42,13 @@ Health check: http://127.0.0.1:8000/health
 ```powershell
 uv run pytest -v
 ```
+
+## Phase 4: LangGraph Agent
+
+- Stateful ReAct workflow using LangGraph StateGraph
+- OpenRouter LLM with tool-calling support
+- Five integrated custom tools
+- Conditional routing between model and tool nodes
+- Execution recursion limit
+- Agent API at POST /agent/run
+- Automated agent endpoint tests
