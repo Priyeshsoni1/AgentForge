@@ -5,24 +5,52 @@ import logging
 from collections.abc import AsyncIterator
 from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from langgraph.errors import GraphRecursionError
 
 from agentforge.api.schemas import AgentRunRequest, AgentRunResponse
 from agentforge.core.agent import run_agent, stream_agent
+from agentforge.core.security import (
+    enforce_rate_limit,
+    get_current_owner,
+)
 
 logger = logging.getLogger(__name__)
 
-router = APIRouter(prefix="/agent", tags=["Agent"])
+router = APIRouter(
+    prefix="/agent",
+    tags=["Agent"],
+    dependencies=[Depends(enforce_rate_limit)],
+)
+
+
+async def verify_conversation(
+    request: Request,
+    thread_id: str,
+    owner_id: str,
+) -> None:
+    try:
+        await request.app.state.conversation_store.claim_or_verify(
+            thread_id,
+            owner_id,
+        )
+    except PermissionError as exc:
+        raise HTTPException(
+            status_code=404,
+            detail="Conversation not found.",
+        ) from exc
 
 
 @router.post("/run", response_model=AgentRunResponse)
 async def run_agent_endpoint(
     request: AgentRunRequest,
     http_request: Request,
+    owner_id: str = Depends(get_current_owner),
 ) -> AgentRunResponse:
     thread_id = request.thread_id or str(uuid4())
+
+    await verify_conversation(http_request, thread_id, owner_id)
 
     try:
         result = await run_agent(
@@ -36,14 +64,11 @@ async def run_agent_endpoint(
     except GraphRecursionError as exc:
         raise HTTPException(
             status_code=422,
-            detail="Agent reached its execution limit.",
+            detail="Agent execution limit reached.",
         ) from exc
 
     except ValueError as exc:
-        raise HTTPException(
-            status_code=422,
-            detail=str(exc),
-        ) from exc
+        raise HTTPException(status_code=422, detail=str(exc)) from exc
 
     except RuntimeError as exc:
         logger.warning("Agent execution unavailable: %s", exc)
@@ -103,8 +128,11 @@ async def agent_event_stream(
 async def run_agent_stream_endpoint(
     request: AgentRunRequest,
     http_request: Request,
+    owner_id: str = Depends(get_current_owner),
 ) -> StreamingResponse:
     thread_id = request.thread_id or str(uuid4())
+
+    await verify_conversation(http_request, thread_id, owner_id)
 
     return StreamingResponse(
         agent_event_stream(

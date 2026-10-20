@@ -1,5 +1,5 @@
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException,Depends
 
 from agentforge.api.schemas import ChatRequest, ChatResponse
 from agentforge.core.llm import (
@@ -7,8 +7,15 @@ from agentforge.core.llm import (
     LLMProviderError,
     OpenRouterClient,
 )
-
-router = APIRouter(prefix="/llm", tags=["LLM"])
+from agentforge.core.security import enforce_rate_limit, get_current_owner
+router = APIRouter(
+    prefix="/llm",
+    tags=["LLM"],
+    dependencies=[
+       
+        Depends(enforce_rate_limit),
+    ],
+)
 
 
 def get_openrouter_client() -> OpenRouterClient:
