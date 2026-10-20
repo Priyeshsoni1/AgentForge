@@ -1,0 +1,35 @@
+services:
+  - type: web
+    name: agentforge-api
+    runtime: docker
+    healthCheckPath: /health
+    envVars:
+      - key: ENVIRONMENT
+        value: production
+
+      - key: OPENROUTER_API_KEY
+        sync: false
+
+      - key: OPENROUTER_MODEL
+        value: openrouter/free
+
+      - key: DATABASE_URL
+        sync: false
+
+      - key: REDIS_URL
+        sync: false
+
+      - key: APP_API_KEYS
+        sync: false
+
+      - key: RATE_LIMIT_REQUESTS
+        value: "30"
+
+      - key: RATE_LIMIT_WINDOW_SECONDS
+        value: "60"
+
+      - key: TAVILY_API_KEY
+        sync: false
+
+      - key: ALLOWED_API_HOSTS
+        sync: false
