@@ -3,8 +3,9 @@ import asyncio
 import json
 import logging
 from collections.abc import AsyncIterator
+from uuid import uuid4
 
-from fastapi import APIRouter, HTTPException
+from fastapi import APIRouter, HTTPException, Request
 from fastapi.responses import StreamingResponse
 from langgraph.errors import GraphRecursionError
 
@@ -19,9 +20,17 @@ router = APIRouter(prefix="/agent", tags=["Agent"])
 @router.post("/run", response_model=AgentRunResponse)
 async def run_agent_endpoint(
     request: AgentRunRequest,
+    http_request: Request,
 ) -> AgentRunResponse:
+    thread_id = request.thread_id or str(uuid4())
+
     try:
-        result = await run_agent(request.message)
+        result = await run_agent(
+            request.message,
+            graph=http_request.app.state.agent_graph,
+            thread_id=thread_id,
+        )
+        result["thread_id"] = thread_id
         return AgentRunResponse(**result)
 
     except GraphRecursionError as exc:
@@ -36,13 +45,12 @@ async def run_agent_endpoint(
             detail=str(exc),
         ) from exc
 
-
     except RuntimeError as exc:
+        logger.warning("Agent execution unavailable: %s", exc)
         raise HTTPException(
             status_code=503,
-            detail=str(exc),
+            detail="Agent execution unavailable.",
         ) from exc
-
 
     except Exception as exc:
         logger.exception("Unexpected agent execution failure")
@@ -53,19 +61,23 @@ async def run_agent_endpoint(
 
 
 def encode_sse(event: str, data: dict) -> str:
-    """Serialize one Server-Sent Event."""
     return (
         f"event: {event}\n"
         f"data: {json.dumps(data, ensure_ascii=False)}\n\n"
     )
 
 
-
 async def agent_event_stream(
     message: str,
+    graph,
+    thread_id: str,
 ) -> AsyncIterator[str]:
     try:
-        async for item in stream_agent(message):
+        async for item in stream_agent(
+            message,
+            graph=graph,
+            thread_id=thread_id,
+        ):
             yield encode_sse(item["event"], item["data"])
 
     except asyncio.CancelledError:
@@ -90,9 +102,16 @@ async def agent_event_stream(
 @router.post("/run/stream")
 async def run_agent_stream_endpoint(
     request: AgentRunRequest,
+    http_request: Request,
 ) -> StreamingResponse:
+    thread_id = request.thread_id or str(uuid4())
+
     return StreamingResponse(
-        agent_event_stream(request.message),
+        agent_event_stream(
+            request.message,
+            http_request.app.state.agent_graph,
+            thread_id,
+        ),
         media_type="text/event-stream",
         headers={
             "Cache-Control": "no-cache",

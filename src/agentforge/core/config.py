@@ -5,7 +5,7 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 
 class Settings(BaseSettings):
     app_name: str = "AgentForge"
-    app_version: str = "0.3.0"
+    app_version: str = "0.6.0"
     environment: str = "development"
 
     openrouter_api_key: SecretStr | None = None
@@ -15,14 +15,12 @@ class Settings(BaseSettings):
 
     tavily_api_key: SecretStr | None = None
 
-    # Comma-separated list of approved HTTPS API hostnames.
     allowed_api_hosts: str = ""
-
     python_sandbox_image: str = "python:3.12-alpine"
     python_sandbox_timeout_seconds: int = 5
-
-    # Only files inside this directory can be read.
     file_reader_root: str = "workspace"
+
+    database_url: SecretStr | None = None
 
     model_config = SettingsConfigDict(
         env_file=".env",

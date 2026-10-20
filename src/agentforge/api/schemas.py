@@ -5,11 +5,7 @@ from pydantic import BaseModel, ConfigDict, Field
 class ChatRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
-    message: str = Field(
-        min_length=1,
-        max_length=4000,
-        description="The user's message to the LLM.",
-    )
+    message: str = Field(min_length=1, max_length=4000)
 
 
 class TokenUsage(BaseModel):
@@ -23,13 +19,17 @@ class ChatResponse(BaseModel):
     model: str
     usage: TokenUsage
 
+
 class AgentRunRequest(BaseModel):
     model_config = ConfigDict(str_strip_whitespace=True)
 
-    message: str = Field(
+    message: str = Field(min_length=1, max_length=4000)
+    thread_id: str | None = Field(
+        default=None,
         min_length=1,
-        max_length=4000,
-        description="The task for the AgentForge agent.",
+        max_length=128,
+        pattern=r"^[A-Za-z0-9_-]+$",
+        description="Reuse this ID to continue a conversation.",
     )
 
 
@@ -42,3 +42,4 @@ class AgentRunResponse(BaseModel):
     answer: str
     tool_calls: list[ToolCallInfo]
     steps: int
+    thread_id: str

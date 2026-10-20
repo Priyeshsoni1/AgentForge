@@ -61,3 +61,18 @@ uv run pytest -v
 - Final answer and error events
 - Client-disconnect cancellation handling
 - Automated streaming endpoint tests
+
+## Phase 6: PostgreSQL Persistence
+
+- Supabase PostgreSQL integration
+- LangGraph AsyncPostgresSaver checkpoints
+- Persistent conversation messages
+- Thread-based conversation continuity
+- Shared state across normal and streaming endpoints
+- Unit tests isolated from the external database
+
+### Continue a Conversation
+
+Send the same `thread_id` with each request to
+continue the same conversation. Use a different ID
+for a separate conversation.
