@@ -1,0 +1,21 @@
+
+[
+  {
+    "id": "general-knowledge",
+    "message": "Explain what an API is in two sentences.",
+    "expected_keywords": ["request", "response"],
+    "required_tools": []
+  },
+  {
+    "id": "calculator",
+    "message": "Use the calculator to compute 125 * 8.",
+    "expected_keywords": ["1000"],
+    "required_tools": ["calculator"]
+  },
+  {
+    "id": "calculator-addition",
+    "message": "Use the calculator to add 248 and 752.",
+    "expected_keywords": ["1000"],
+    "required_tools": ["calculator"]
+  }
+]

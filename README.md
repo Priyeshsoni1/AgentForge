@@ -76,3 +76,23 @@ uv run pytest -v
 Send the same `thread_id` with each request to
 continue the same conversation. Use a different ID
 for a separate conversation.
+
+## Phase 7: Security and Reliability
+
+- API-key authentication
+- Per-owner rate limiting
+- Redis-backed shared rate limiting
+- PostgreSQL conversation ownership
+- Protected agent and LLM endpoints
+- Request validation and safe public errors
+- Security and rate-limiter tests
+
+### Authentication
+
+Protected endpoints require the `X-API-Key` header.
+
+Configure `APP_API_KEYS` in `.env` as a JSON mapping
+of owner IDs to strong API keys.
+
+Production deployments require PostgreSQL, Redis,
+and API-key configuration.

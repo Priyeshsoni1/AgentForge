@@ -1,0 +1,37 @@
+{
+  "passed": 2,
+  "total": 3,
+  "pass_rate": 0.6667,
+  "results": [
+    {
+      "id": "general-knowledge",
+      "passed": false,
+      "answer": "An API (Application Programming Interface) is a set of rules and endpoints that lets one software system request data or actions from another program without needing to know how that program works internally.\n\nFor example, when a weather app calls a weather service's API, it sends a request for a city's forecast and receives structured data back, which the app then displays to the user.",
+      "missing_keywords": [
+        "response"
+      ],
+      "missing_tools": [],
+      "actual_tools": []
+    },
+    {
+      "id": "calculator",
+      "passed": true,
+      "answer": "The result of 125 * 8 is **1000**.",
+      "missing_keywords": [],
+      "missing_tools": [],
+      "actual_tools": [
+        "calculator"
+      ]
+    },
+    {
+      "id": "calculator-addition",
+      "passed": true,
+      "answer": "The sum of 248 and 752 is **1000**.",
+      "missing_keywords": [],
+      "missing_tools": [],
+      "actual_tools": [
+        "calculator"
+      ]
+    }
+  ]
+}

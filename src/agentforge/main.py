@@ -1,7 +1,10 @@
 
 import logging
 from contextlib import asynccontextmanager
-
+from agentforge.core.observability import (
+    RequestLoggingMiddleware,
+    configure_logging,
+)
 from fastapi import FastAPI
 from langgraph.checkpoint.postgres.aio import AsyncPostgresSaver
 from psycopg_pool import AsyncConnectionPool
@@ -16,7 +19,7 @@ from agentforge.core.security import (
     InMemoryRateLimiter,
     RedisRateLimiter,
 )
-
+from fastapi import HTTPException, Request
 logger = logging.getLogger(__name__)
 
 
@@ -140,7 +143,8 @@ app = FastAPI(
     description="A production-oriented multi-tool AI agent.",
     lifespan=lifespan,
 )
-
+configure_logging()
+app.add_middleware(RequestLoggingMiddleware)
 app.include_router(llm_router)
 app.include_router(agent_router)
 
@@ -161,3 +165,43 @@ async def health_check() -> dict[str, str]:
         "service": "agentforge-api",
         "version": settings.app_version,
     }
+
+
+
+
+@app.get("/ready", tags=["Health"])
+async def readiness_check(request: Request):
+    """Check whether configured application dependencies are available."""
+
+    if getattr(request.app.state, "rate_limiter", None) is None:
+        raise HTTPException(
+            status_code=503,
+            detail="Rate limiter is not initialized.",
+        )
+
+    settings = request.app.state
+
+    # Check PostgreSQL when a database pool is configured.
+    pool = getattr(settings, "database_pool", None)
+    if pool is not None:
+        try:
+            async with pool.connection() as connection:
+                await connection.execute("SELECT 1")
+        except Exception:
+            raise HTTPException(
+                status_code=503,
+                detail="Database is unavailable.",
+            ) from None
+
+    # Check Redis when a Redis client is configured.
+    redis_client = getattr(settings, "redis", None)
+    if redis_client is not None:
+        try:
+            await redis_client.ping()
+        except Exception:
+            raise HTTPException(
+                status_code=503,
+                detail="Redis is unavailable.",
+            ) from None
+
+    return {"status": "ready"}
