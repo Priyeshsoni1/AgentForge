@@ -52,3 +52,12 @@ uv run pytest -v
 - Execution recursion limit
 - Agent API at POST /agent/run
 - Automated agent endpoint tests
+
+## Phase 5: Streaming API
+
+- Server-Sent Events (SSE) for agent execution
+- POST /agent/run/stream
+- Public tool-start and tool-completion events
+- Final answer and error events
+- Client-disconnect cancellation handling
+- Automated streaming endpoint tests

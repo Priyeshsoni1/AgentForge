@@ -6,7 +6,10 @@ from langgraph.prebuilt import ToolNode, tools_condition
 
 from agentforge.core.config import settings
 from agentforge.tools.agent_tools import AGENT_TOOLS
+import json
+from collections.abc import AsyncIterator
 
+from langchain_core.messages import AIMessage
 
 SYSTEM_PROMPT = """
 You are AgentForge, a helpful multi-tool AI assistant.
@@ -130,3 +133,88 @@ async def run_agent(message: str) -> dict:
         "tool_calls": tool_calls,
         "steps": len(messages),
     }
+
+
+
+
+def _message_text(content: object) -> str:
+    """Extract user-facing text from an assistant message."""
+    if isinstance(content, str):
+        return content
+
+    if isinstance(content, list):
+        return "\n".join(
+            block["text"]
+            for block in content
+            if isinstance(block, dict)
+            and block.get("type") == "text"
+            and isinstance(block.get("text"), str)
+        )
+
+    return ""
+
+
+async def stream_agent(message: str) -> AsyncIterator[dict]:
+    """Stream public progress events from the LangGraph agent."""
+
+    if not message.strip():
+        raise ValueError("Message cannot be empty.")
+
+    graph = build_agent()
+
+    yield {
+        "event": "status",
+        "data": {"message": "Agent execution started."},
+    }
+
+    final_answer_sent = False
+
+    async for event in graph.astream_events(
+        {"messages": [{"role": "user", "content": message}]},
+        config={"recursion_limit": 12},
+        version="v2",
+    ):
+        event_name = event.get("event")
+        metadata = event.get("metadata", {})
+
+        if event_name == "on_tool_start":
+            tool_name = event.get("name", "unknown")
+
+            yield {
+                "event": "tool_start",
+                "data": {"tool": tool_name},
+            }
+
+        elif event_name == "on_tool_end":
+            tool_name = event.get("name", "unknown")
+
+            yield {
+                "event": "tool_complete",
+                "data": {"tool": tool_name},
+            }
+
+        elif (
+            event_name == "on_chat_model_end"
+            and metadata.get("langgraph_node") == "agent"
+        ):
+            output = event.get("data", {}).get("output")
+
+            # Emit only completed assistant messages that are not
+            # requesting additional tools.
+            if isinstance(output, AIMessage) and not output.tool_calls:
+                answer = _message_text(output.content)
+
+                if answer.strip():
+                    final_answer_sent = True
+                    yield {
+                        "event": "final",
+                        "data": {"answer": answer},
+                    }
+
+    if not final_answer_sent:
+        yield {
+            "event": "error",
+            "data": {
+                "message": "Agent finished without a final text response."
+            },
+        }
